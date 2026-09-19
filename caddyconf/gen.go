@@ -8,6 +8,7 @@ import (
 	"net"
 	"net/url"
 	"path/filepath"
+	"runtime"
 	"strings"
 
 	"aven/config"
@@ -72,6 +73,35 @@ func ParseTarget(raw string) (dial string, httpsUpstream bool, err error) {
 	return net.JoinHostPort(host, port), false, nil
 }
 
+// ServerListen returns the listen addresses for a serving port. macOS
+// refuses unprivileged binds of privileged ports to explicit addresses
+// while allowing wildcard binds, so ports <1024 on darwin bind the
+// wildcard and rely on loopbackGuardRoute to abort non-local requests;
+// everywhere else (and for unprivileged ports) the bind is loopback-only
+// and nothing from the network reaches the socket at all.
+func ServerListen(port int) []string {
+	if runtime.GOOS == "darwin" && port > 0 && port < 1024 {
+		return []string{fmt.Sprintf(":%d", port)}
+	}
+	return []string{net.JoinHostPort("127.0.0.1", fmt.Sprint(port))}
+}
+
+// loopbackGuardRoute is a terminal route that aborts any request whose
+// remote address is not this machine. It is prepended to every server so
+// static roots and proxied backends are unreachable from the network even
+// when the socket itself must bind the wildcard (see ServerListen).
+func loopbackGuardRoute() map[string]any {
+	return map[string]any{
+		"match": []any{map[string]any{
+			"not": []any{map[string]any{
+				"remote_ip": map[string]any{"ranges": []string{"127.0.0.1", "::1"}},
+			}},
+		}},
+		"handle":   []any{map[string]any{"handler": "static_response", "abort": true}},
+		"terminal": true,
+	}
+}
+
 // Build renders cfg as a Caddy v2 JSON document. Pure function of cfg (plus
 // the fixed base directory); identical input yields identical output bytes.
 func Build(cfg *config.Config) ([]byte, error) {
@@ -109,6 +139,11 @@ func Build(cfg *config.Config) ([]byte, error) {
 		})
 	}
 
+	// The guard is first on both servers so a request from any
+	// non-loopback peer is aborted before any domain route can run.
+	httpsRoutes = append([]any{loopbackGuardRoute()}, httpsRoutes...)
+	httpRoutes = append([]any{loopbackGuardRoute()}, httpRoutes...)
+
 	doc := map[string]any{
 		"admin":   map[string]any{"listen": net.JoinHostPort("127.0.0.1", fmt.Sprint(cfg.AdminPort))},
 		"storage": map[string]any{"module": "file_system", "root": StorageDir()},
@@ -127,19 +162,23 @@ func Build(cfg *config.Config) ([]byte, error) {
 		"apps": map[string]any{
 			"pki": map[string]any{
 				// v2.11 pki app: CAs map is "certificate_authorities".
-				"certificate_authorities": map[string]any{"local": map[string]any{"name": CAName}},
+				// install_trust=false: trusting the root is `aven setup`'s
+				// explicit, elevated step — never the daemon's silent one.
+				"certificate_authorities": map[string]any{"local": map[string]any{
+					"name": CAName, "install_trust": false,
+				}},
 			},
 			"http": map[string]any{
 				"http_port":  cfg.HTTPPort,
 				"https_port": cfg.HTTPSPort,
 				"servers": map[string]any{
 					"srv0": map[string]any{
-						"listen": []string{fmt.Sprintf(":%d", cfg.HTTPSPort)},
+						"listen": ServerListen(cfg.HTTPSPort),
 						"routes": httpsRoutes,
 						"logs":   map[string]any{"default_logger_name": "access"},
 					},
 					"srv1": map[string]any{
-						"listen": []string{fmt.Sprintf(":%d", cfg.HTTPPort)},
+						"listen": ServerListen(cfg.HTTPPort),
 						"routes": httpRoutes,
 						"logs":   map[string]any{"default_logger_name": "access"},
 					},

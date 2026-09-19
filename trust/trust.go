@@ -64,7 +64,12 @@ func ProvisionCA() error {
 		"storage": map[string]any{"module": "file_system", "root": caddyconf.StorageDir()},
 		"apps": map[string]any{
 			"pki": map[string]any{
-				"certificate_authorities": map[string]any{"local": map[string]any{"name": caddyconf.CAName}},
+				// install_trust=false keeps provisioning free of any
+				// trust-store/sudo side effects; trust is installed only
+				// by the explicit `aven setup`/`aven trust` elevation.
+				"certificate_authorities": map[string]any{"local": map[string]any{
+					"name": caddyconf.CAName, "install_trust": false,
+				}},
 			},
 		},
 	}

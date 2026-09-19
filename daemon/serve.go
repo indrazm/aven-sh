@@ -28,8 +28,9 @@ import (
 // and blocks until SIGINT/SIGTERM or until the engine is stopped through
 // the admin API (POST /stop), which also terminates this process.
 func Serve(cfg *config.Config) error {
-	// Pre-check the public ports so a busy or unbindable port produces a
-	// targeted error instead of Caddy's generic failure.
+	// Pre-check the serving ports on 127.0.0.1 — the addresses the
+	// generated Caddy config actually binds — so a busy or unbindable
+	// port produces a targeted error instead of Caddy's generic failure.
 	for _, p := range []struct {
 		name string
 		port int
@@ -37,7 +38,7 @@ func Serve(cfg *config.Config) error {
 		{"http", cfg.HTTPPort},
 		{"https", cfg.HTTPSPort},
 	} {
-		ln, err := net.Listen("tcp", fmt.Sprintf(":%d", p.port))
+		ln, err := net.Listen("tcp", caddyconf.ServerListen(p.port)[0])
 		if err != nil {
 			msg := fmt.Sprintf("bind port %d (%s): %v", p.port, p.name, err)
 			if errors.Is(err, syscall.EACCES) || errors.Is(err, syscall.EPERM) {

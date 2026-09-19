@@ -95,7 +95,18 @@ running (`aven serve`).
 
 `aven serve` runs Caddy v2 embedded in-process: port 443 for HTTPS with wildcard
 certificates from the aven CA, port 80 redirecting to HTTPS, and an admin API on
-`127.0.0.1:2019` used for zero-downtime config reloads.
+`127.0.0.1:2019` used for zero-downtime config reloads. All listeners accept only
+local traffic: the admin API, console API and DNS responder bind `127.0.0.1`, and
+the serving ports do too — except on macOS, where the OS only allows unprivileged
+wildcard binds of privileged ports, a source-address guard aborts any request that
+does not originate from this machine.
+
+**Security model:** your domains are reachable only from this machine — never from
+the LAN. Anything running locally can reach them (including any website open in
+your browser, since the aven CA is trusted and `*.aven` resolves to localhost);
+treat a `*.aven` domain as you would `localhost:<port>`, not as a private network.
+Trusting the root CA is always an explicit `aven setup`/`aven trust` step — the
+daemon itself never modifies the system trust store.
 
 `aven setup` writes `/etc/resolver/<suffix>` pointing at aven's DNS responder, so the
 operating system routes every `*.aven` query to the daemon, which answers

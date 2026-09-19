@@ -3,11 +3,27 @@ package caddyconf
 import (
 	"bytes"
 	"encoding/json"
+	"net"
 	"reflect"
+	"runtime"
 	"testing"
 
 	"aven/config"
 )
+
+// guardRoute is the terminal abort route prepended to every server: it
+// drops requests from non-loopback peers (see ServerListen).
+func guardRoute() map[string]any {
+	return map[string]any{
+		"match": []any{map[string]any{
+			"not": []any{map[string]any{
+				"remote_ip": map[string]any{"ranges": []any{"127.0.0.1", "::1"}},
+			}},
+		}},
+		"handle":   []any{map[string]any{"handler": "static_response", "abort": true}},
+		"terminal": true,
+	}
+}
 
 // goldenConfig is a two-domain config: one HTTP proxy, one static site.
 func goldenConfig() *config.Config {
@@ -30,6 +46,12 @@ func TestBuildGoldenShape(t *testing.T) {
 		t.Fatal(err)
 	}
 	base := config.BaseDir()
+	// macOS only permits unprivileged wildcard binds of privileged ports
+	// (see ServerListen); everywhere else the sockets are loopback-only.
+	httpsListen, httpListen := []any{"127.0.0.1:443"}, []any{"127.0.0.1:80"}
+	if runtime.GOOS == "darwin" {
+		httpsListen, httpListen = []any{":443"}, []any{":80"}
+	}
 	want := map[string]any{
 		"admin":   map[string]any{"listen": "127.0.0.1:2019"},
 		"storage": map[string]any{"module": "file_system", "root": base + "/caddy"},
@@ -46,16 +68,18 @@ func TestBuildGoldenShape(t *testing.T) {
 		},
 		"apps": map[string]any{
 			"pki": map[string]any{
-				"certificate_authorities": map[string]any{"local": map[string]any{"name": "Aven"}},
+				"certificate_authorities": map[string]any{"local": map[string]any{
+					"name": "Aven", "install_trust": false,
+				}},
 			},
 			"http": map[string]any{
 				"http_port":  float64(80),
 				"https_port": float64(443),
 				"servers": map[string]any{
 					"srv0": map[string]any{
-						"listen": []any{":443"},
+						"listen": httpsListen,
 						"logs":   map[string]any{"default_logger_name": "access"},
-						"routes": []any{
+						"routes": append([]any{guardRoute()}, []any{
 							map[string]any{
 								"match": []any{map[string]any{"host": []any{"api.aven"}}},
 								"handle": []any{map[string]any{
@@ -72,12 +96,12 @@ func TestBuildGoldenShape(t *testing.T) {
 								}},
 								"terminal": true,
 							},
-						},
+						}...),
 					},
 					"srv1": map[string]any{
-						"listen": []any{":80"},
+						"listen": httpListen,
 						"logs":   map[string]any{"default_logger_name": "access"},
-						"routes": []any{
+						"routes": append([]any{guardRoute()}, []any{
 							map[string]any{
 								"match": []any{map[string]any{"host": []any{"api.aven"}}},
 								"handle": []any{map[string]any{
@@ -96,7 +120,7 @@ func TestBuildGoldenShape(t *testing.T) {
 								}},
 								"terminal": true,
 							},
-						},
+						}...),
 					},
 				},
 			},
@@ -149,8 +173,47 @@ func TestBuildEmptyDomains(t *testing.T) {
 	for _, name := range []string{"srv0", "srv1"} {
 		routes := servers[name].(map[string]any)["routes"]
 		rts, ok := routes.([]any)
-		if !ok || len(rts) != 0 {
-			t.Fatalf("%s routes should be an empty array, got %#v", name, routes)
+		if !ok || len(rts) != 1 {
+			t.Fatalf("%s routes should be exactly the loopback guard, got %#v", name, routes)
+		}
+		if !reflect.DeepEqual(rts[0], guardRoute()) {
+			t.Fatalf("%s sole route should be the loopback guard, got %#v", name, rts[0])
+		}
+	}
+}
+
+// TestBuildLoopbackIsolation pins the network-exposure contract: the first
+// route on both servers aborts non-loopback peers, and the socket binds
+// loopback except on darwin privileged ports, where the OS only allows an
+// unprivileged wildcard bind and the guard is what shields it.
+func TestBuildLoopbackIsolation(t *testing.T) {
+	b, err := Build(goldenConfig())
+	if err != nil {
+		t.Fatal(err)
+	}
+	var got map[string]any
+	if err := json.Unmarshal(b, &got); err != nil {
+		t.Fatal(err)
+	}
+	servers := got["apps"].(map[string]any)["http"].(map[string]any)["servers"].(map[string]any)
+	for _, name := range []string{"srv0", "srv1"} {
+		srv := servers[name].(map[string]any)
+		routes := srv["routes"].([]any)
+		if len(routes) == 0 || !reflect.DeepEqual(routes[0], guardRoute()) {
+			t.Fatalf("%s: first route must be the loopback guard, got %#v", name, routes)
+		}
+		for _, a := range srv["listen"].([]any) {
+			addr, _ := a.(string)
+			host, _, err := net.SplitHostPort(addr)
+			if err != nil {
+				t.Fatalf("%s: bad listen %q: %v", name, addr, err)
+			}
+			if host == "" && runtime.GOOS != "darwin" {
+				t.Fatalf("%s: wildcard listen %q only permitted on darwin", name, addr)
+			}
+			if host != "" && host != "127.0.0.1" {
+				t.Fatalf("%s: listen %q is not loopback", name, addr)
+			}
 		}
 	}
 }
@@ -167,7 +230,8 @@ func TestBuildHTTPSProxyTransport(t *testing.T) {
 		t.Fatal(err)
 	}
 	servers := got["apps"].(map[string]any)["http"].(map[string]any)["servers"].(map[string]any)
-	route := servers["srv0"].(map[string]any)["routes"].([]any)[0].(map[string]any)
+	// routes[0] is the loopback guard; the domain's route follows it.
+	route := servers["srv0"].(map[string]any)["routes"].([]any)[1].(map[string]any)
 	handler := route["handle"].([]any)[0].(map[string]any)
 	transport, ok := handler["transport"].(map[string]any)
 	if !ok || transport["protocol"] != "http" {
@@ -178,6 +242,22 @@ func TestBuildHTTPSProxyTransport(t *testing.T) {
 	}
 	if handler["upstreams"].([]any)[0].(map[string]any)["dial"] != "localhost:8443" {
 		t.Fatalf("wrong dial: %#v", handler["upstreams"])
+	}
+}
+
+// TestServerListen pins the platform binding policy: unprivileged ports are
+// loopback-only everywhere; privileged ports bind loopback except on darwin,
+// where the OS only permits unprivileged wildcard binds (see ServerListen).
+func TestServerListen(t *testing.T) {
+	if got := ServerListen(8080); !reflect.DeepEqual(got, []string{"127.0.0.1:8080"}) {
+		t.Fatalf("ServerListen(8080) = %v, want loopback-only on every platform", got)
+	}
+	want := []string{"127.0.0.1:443"}
+	if runtime.GOOS == "darwin" {
+		want = []string{":443"}
+	}
+	if got := ServerListen(443); !reflect.DeepEqual(got, want) {
+		t.Fatalf("ServerListen(443) = %v, want %v", got, want)
 	}
 }
 
