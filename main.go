@@ -22,9 +22,13 @@ import (
 	"aven/trust"
 )
 
+// version is stamped at release build time via -ldflags "-X main.version=…".
+var version = "dev"
+
 func main() {
 	root := &cobra.Command{
-		Use:   "aven",
+		Use:     "aven",
+		Version: version,
 		Short: "Local HTTPS development domains on localhost",
 		Long: `aven creates local development domains like myapp.aven that serve
 HTTPS from localhost via reverse proxy or static file serving.

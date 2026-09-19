@@ -31,14 +31,15 @@ browsers trust, served straight from your machine.
 ## Quick start
 
 ```bash
-go build -o aven .        # Go 1.27+
-./aven setup              # once: trust the CA + install the DNS resolver (1 password dialog)
-./aven serve              # start the HTTPS daemon (ports 80/443)
+curl -fsSL https://raw.githubusercontent.com/indrazm/aven-sh/main/install.sh | sh
 
-./aven add myapp --proxy localhost:3000     # reverse proxy
-./aven add site  --root ~/sites/demo        # static files
+aven setup              # once: trust the CA + install the DNS resolver (1 password dialog)
+aven serve              # start the HTTPS daemon (ports 80/443)
 
-open https://myapp.aven                     # real HTTPS, trusted, no warnings
+aven add myapp --proxy localhost:3000     # reverse proxy
+aven add site  --root ~/sites/demo        # static files
+
+open https://myapp.aven                    # real HTTPS, trusted, no warnings
 ```
 
 That's the whole loop. Remove with `aven remove myapp`, pause with `aven pause myapp`,
