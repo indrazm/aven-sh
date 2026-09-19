@@ -18,7 +18,6 @@ import (
 	"aven/internal/mcpserver"
 	"aven/internal/setup"
 	"aven/internal/trust"
-	"aven/internal/tui"
 )
 
 func main() {
@@ -28,15 +27,12 @@ func main() {
 		Long: `aven creates local development domains like myapp.aven that serve
 HTTPS from localhost via reverse proxy or static file serving.
 
-Run without arguments to open the management TUI. First-time setup:
+First-time setup:
 ` + "`aven setup`" + ` (one password dialog, then domains resolve via the local
 DNS responder with zero prompts). Start the daemon with ` + "`aven serve`" + `.
 
 https://aven.sh`,
 		SilenceUsage: true,
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return tui.Run()
-		},
 	}
 
 	var serveConfig string

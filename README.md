@@ -44,17 +44,6 @@ open https://myapp.aven                     # real HTTPS, trusted, no warnings
 That's the whole loop. Remove with `aven remove myapp`, pause with `aven pause myapp`,
 resume with `aven resume myapp`.
 
-## The TUI
-
-Run `aven` with no arguments for the dashboard:
-
-- **Domains** — every domain with live backend status; press `space` to pause/resume,
-  `c` to copy the URL, `o` to open it in your browser
-- **Requests** — live request inspector per domain (method, status, URI, size, timing);
-  press `r` to replay the last request
-- **Caddy** — the daemon's own log, in place
-- **System** — daemon, CA trust, resolver, and suffix at a glance, with fix hints
-
 ## CLI
 
 | Command | What it does |
@@ -98,8 +87,8 @@ operating system routes every `*.aven` query to the daemon, which answers
 `127.0.0.1`. Because resolution is name-agnostic, creating a domain is only a config
 write plus a reload — nothing privileged, nothing persistent outside `~/.aven`.
 
-Every request is recorded to `~/.aven/access.log` as structured JSON, which powers
-the inspector.
+Every request is recorded to `~/.aven/access.log` as structured JSON — method, path,
+status, size, duration — ready for `jq`, tailing, or your own tooling.
 
 ## Configuration
 
