@@ -17,16 +17,14 @@ workers, cookies with `Secure`, camera and clipboard APIs — they all demand re
 HTTPS on a real hostname. aven gives every project its own `*.aven` domain that
 browsers trust, served straight from your machine.
 
-- **Trusted HTTPS automatically** — aven provisions a local root CA ("Aven") once and
-  issues wildcard certificates for every domain you create. `curl`, Safari, Chrome —
+- **Trusted HTTPS automatically** — aven provisions a local root CA once and issues
+  wildcard certificates for every domain you create. `curl`, Safari, Chrome —
   everything just works, no `-k` flags.
-- **Zero prompts after setup** — domains resolve through aven's built-in DNS responder
-  and a scoped macOS resolver file, not `/etc/hosts`. Adding or removing a domain never
-  asks for your password again.
-- **Fast like it should be** — `aven add` takes ~100 ms and hot-reloads the daemon.
-  No restarts, ever.
+- **Zero prompts after setup** — domains resolve through aven's built-in DNS
+  responder, so adding or removing a domain never asks for your password again.
+- **Fast like it should be** — domains hot-reload in ~100 ms. No restarts, ever.
 - **One binary** — Caddy v2 is embedded; there is nothing else to install, run, or
-  upgrade.
+  maintain.
 
 ## Quick start
 
@@ -34,7 +32,7 @@ browsers trust, served straight from your machine.
 curl -fsSL https://install.aven.sh/install.sh | sh
 
 aven setup              # once: trust the CA + install the DNS resolver (1 password dialog)
-aven serve              # start the HTTPS daemon (ports 80/443)
+aven serve              # start the HTTPS daemon
 
 aven add myapp --proxy localhost:3000     # reverse proxy
 aven add site  --root ~/sites/demo        # static files
@@ -42,127 +40,39 @@ aven add site  --root ~/sites/demo        # static files
 open https://myapp.aven                    # real HTTPS, trusted, no warnings
 ```
 
-That's the whole loop. Remove with `aven remove myapp`, pause with `aven pause myapp`,
-resume with `aven resume myapp`.
-
-## CLI
-
-| Command | What it does |
-|---|---|
-| `aven setup` | One-time machine setup: trust the CA, install the scoped resolver |
-| `aven serve` | Run the HTTPS daemon in the foreground |
-| `aven add <name> --proxy <host:port> \| --root <dir>` | Add a domain |
-| `aven remove <name>` | Remove a domain |
-| `aven pause <name>` / `aven resume <name>` | Stop/resume serving a domain without deleting it |
-| `aven list [--json]` | Domains with live status; `--json` for scripts and agents |
-| `aven doctor` | Health check: config, ports, CA, resolver, daemon, backends |
-| `aven validate` | Validate the config against the embedded Caddy schema |
-| `aven trust` | Provision and trust the root CA |
-| `aven mcp` | MCP server (stdio) for AI agents |
+That's the whole loop. Remove, pause, list, and health-check domains with the
+`aven` commands — `aven --help` shows them all.
 
 ## For AI agents
 
-aven ships an MCP server so Claude Code, Cursor, or any MCP client can manage local
-domains:
-
-```json
-{
-  "mcpServers": {
-    "aven": { "command": "/path/to/aven", "args": ["mcp"] }
-  }
-}
-```
-
-Tools: `list_domains`, `add_domain`, `remove_domain`, `pause_domain`,
-`daemon_control`, `doctor`. Every CLI mutation is also available as a tool — agents
-can stand up `api.aven`, test against it, inspect the traffic, and tear it down again.
+aven ships an MCP server, so Claude Code, Cursor, or any MCP client can stand up
+domains, test against them, and tear them down as part of a task. Point your MCP
+config at `aven mcp` and you're done.
 
 ## Console
 
-aven pairs with a browser console at [console.aven.sh](https://console.aven.sh):
-
-```bash
-aven console pair     # prints a deep link carrying a one-time pairing token
-aven console revoke   # revoke the token
-```
-
-The console is a static web app that talks **straight to your local daemon** over
-HTTPS (`daemon.aven:9443`, authenticated with your pairing token). No cloud control
-plane, no tunnel, no account — nothing leaves your machine. The daemon must be
-running (`aven serve`).
+aven pairs with a browser console at [console.aven.sh](https://console.aven.sh) —
+a static web app that talks straight to your local daemon over HTTPS. No cloud
+control plane, no tunnel, no account: nothing leaves your machine.
 
 ## How it works
 
-`aven serve` runs Caddy v2 embedded in-process: port 443 for HTTPS with wildcard
-certificates from the aven CA, port 80 redirecting to HTTPS, and an admin API on
-`127.0.0.1:2019` used for zero-downtime config reloads. All listeners accept only
-local traffic: the admin API, console API and DNS responder bind `127.0.0.1`, and
-the serving ports do too — except on macOS, where the OS only allows unprivileged
-wildcard binds of privileged ports, a source-address guard aborts any request that
-does not originate from this machine.
+`aven setup` routes every `*.aven` query to aven's built-in DNS responder, which
+answers `127.0.0.1`. Domains are a config write plus a hot reload — nothing
+privileged, nothing persistent outside `~/.aven`. Every request is logged as
+structured JSON, ready for `jq` or your own tooling.
 
 **Security model:** your domains are reachable only from this machine — never from
-the LAN. Anything running locally can reach them (including any website open in
-your browser, since the aven CA is trusted and `*.aven` resolves to localhost);
-treat a `*.aven` domain as you would `localhost:<port>`, not as a private network.
-Trusting the root CA is always an explicit `aven setup`/`aven trust` step — the
-daemon itself never modifies the system trust store.
-
-`aven setup` writes `/etc/resolver/<suffix>` pointing at aven's DNS responder, so the
-operating system routes every `*.aven` query to the daemon, which answers
-`127.0.0.1`. Because resolution is name-agnostic, creating a domain is only a config
-write plus a reload — nothing privileged, nothing persistent outside `~/.aven`.
-
-Every request is recorded to `~/.aven/access.log` as structured JSON — method, path,
-status, size, duration — ready for `jq`, tailing, or your own tooling.
-
-## Configuration
-
-`~/.aven/config.yaml` — created with defaults on first run:
-
-```yaml
-suffix: aven
-http_port: 80
-https_port: 443
-admin_port: 2019
-dns_port: 5354
-domains:
-  - name: api
-    kind: proxy
-    target: localhost:3000
-  - name: site
-    kind: static
-    root: /Users/you/sites/demo
-  - name: lab
-    kind: proxy
-    target: localhost:9000
-    paused: true
-```
-
-Proxy targets accept `host:port`, `http://`, or `https://` (TLS upstreams supported).
+the LAN. Anything running locally can reach them (including any website in your
+browser, since the aven CA is trusted), so treat a `*.aven` domain like
+`localhost:<port>`, not as a private network. Trusting the root CA is always an
+explicit step in `aven setup` — the daemon never modifies the system trust store
+on its own.
 
 ## Requirements
 
-- **macOS** (10.14+, Apple Silicon or Intel) or **Linux** (systemd-resolved for
-  zero-prompt DNS routing — Ubuntu, Debian, Fedora, Arch, ...)
-- Go 1.27+ to build
-
-### Platform notes
-
-**macOS** — `aven setup` writes a scoped resolver file (`/etc/resolver/<suffix>`)
-through a single password dialog; ports 80/443 bind without privileges.
-
-**Linux** — `aven setup` uses `sudo` (passwordless or a fresh sudo timestamp; run
-`sudo aven setup` otherwise) and routes `*.aven` through systemd-resolved
-(`resolvectl dns/domain` on your default link). A `aven-resolver.service` oneshot
-unit re-applies the routing at boot. Two things to know:
-
-- Ports 80/443 require a capability — once per binary:
+- **macOS** (10.14+) or **Linux** (systemd-resolved)
+- Ports 80/443 need no privileges on macOS; on Linux it's once per binary:
   `sudo setcap 'cap_net_bind_service=+ep' aven`
-- The root CA goes into the system store (`update-ca-certificates` /
-  `update-ca-trust`), which covers curl and Chromium; Firefox keeps its own store —
-  import the root manually if you browse with it.
-
-## License
 
 MIT — see [LICENSE](LICENSE).
