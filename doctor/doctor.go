@@ -1,5 +1,5 @@
 // Package doctor aggregates every health check into one report for the
-// `doctor` command, the TUI system panel, and the MCP doctor tool.
+// `doctor` command and the MCP doctor tool.
 package doctor
 
 import (

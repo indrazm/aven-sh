@@ -97,8 +97,6 @@ func tlsConfig(certFile, keyFile string) (*tls.Config, error) {
 	}, nil
 }
 
-// routes and middleware
-
 func registerRoutes(mux *http.ServeMux, probe func() bool) {
 	mux.HandleFunc("GET /api/status", jsonHandler(func(r *http.Request) (any, error) {
 		cfg, err := config.Load()
@@ -178,8 +176,6 @@ func registerRoutes(mux *http.ServeMux, probe func() bool) {
 		return map[string]any{"requests": rows}, nil
 	}))
 }
-
-// middleware: CORS + Private Network Access + bearer auth
 
 type handler func(*http.Request) (any, error)
 

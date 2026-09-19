@@ -83,7 +83,7 @@ func Serve(cfg *config.Config) error {
 	defer stopDNS()
 	stopConsole, err := consoleapi.StartConsole(cfg, admin.NewClient(cfg.AdminPort).Alive)
 	if err != nil {
-		// The console is an convenience surface; a failure to start it
+		// The console is a convenience surface; a failure to start it
 		// (rare: bind conflict) must not take serving down.
 		log.Printf("aven: console API unavailable: %v", err)
 	} else {
@@ -112,7 +112,8 @@ func Serve(cfg *config.Config) error {
 			return caddy.Stop()
 		case <-ticker.C:
 			// The engine can also be stopped externally via POST /stop
-			// (TUI/CLI); the admin listener going away means we're done.
+			// (MCP daemon control, self-upgrade); the admin listener going
+			// away means we're done.
 			if ready && !adminC.Alive() {
 				log.Printf("aven: engine stopped")
 				return nil

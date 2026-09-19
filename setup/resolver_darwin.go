@@ -18,12 +18,10 @@ func ResolverPath(cfg *config.Config) string {
 	return "/etc/resolver/" + cfg.Suffix
 }
 
-// ResolverFile returns the desired resolver file content.
 func ResolverFile(cfg *config.Config) string {
 	return fmt.Sprintf("nameserver 127.0.0.1\nport %d\n", cfg.DNSPort)
 }
 
-// ResolverDetail returns a human-readable description of the routing state.
 func ResolverDetail(cfg *config.Config) string {
 	return ResolverPath(cfg) + " → 127.0.0.1"
 }
@@ -53,7 +51,6 @@ func ApplyResolver(cfg *config.Config) error {
 	return fmt.Errorf("resolver apply is only needed on Linux; on macOS the resolver file in /etc/resolver is permanent")
 }
 
-// resolverSummary returns human-readable confirmation lines.
 func resolverSummary(cfg *config.Config) []string {
 	return []string{
 		"resolver installed: " + ResolverPath(cfg) + " (every *." + cfg.Suffix + " domain resolves to localhost)",

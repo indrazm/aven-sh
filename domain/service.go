@@ -1,5 +1,5 @@
-// Package domain is the shared mutation path used by the CLI, the TUI and
-// the MCP server: validate → save config → hot-reload the daemon. Domain
+// Package domain is the shared mutation path used by the CLI and the MCP
+// server: validate → save config → hot-reload the daemon. Domain
 // resolution is handled by the scoped DNS resolver (see `setup`), so
 // mutations never need elevation.
 package domain

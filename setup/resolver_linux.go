@@ -12,12 +12,10 @@ import (
 	"aven/elevate"
 )
 
-// ResolverDetail returns a human-readable description of the routing state.
 func ResolverDetail(cfg *config.Config) string {
 	return fmt.Sprintf("systemd-resolved routes ~%s to 127.0.0.1:%d", cfg.Suffix, cfg.DNSPort)
 }
 
-// ResolverInstalled reports whether systemd-resolved already routes the
 func ResolverInstalled(cfg *config.Config) bool {
 	link := defaultLink()
 	if link == "" {
@@ -75,7 +73,6 @@ WantedBy=multi-user.target
 `, cfg.Suffix, self)
 }
 
-// resolverSummary returns human-readable confirmation lines.
 func resolverSummary(cfg *config.Config) []string {
 	link := defaultLink()
 	name := link

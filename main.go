@@ -1,5 +1,5 @@
 // Command aven manages local HTTPS development domains backed by an
-// embedded Caddy daemon. With no arguments it starts the TUI.
+// embedded Caddy daemon.
 package main
 
 import (
