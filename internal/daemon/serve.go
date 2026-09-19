@@ -15,8 +15,10 @@ import (
 	"github.com/caddyserver/caddy/v2"
 	_ "github.com/caddyserver/caddy/v2/modules/standard" // register standard Caddy modules
 
+	"aven/internal/admin"
 	"aven/internal/caddyconf"
 	"aven/internal/config"
+	"aven/internal/consoleapi"
 )
 
 // Serve builds the Caddy config, validates it, runs the engine in-process
@@ -49,10 +51,19 @@ func Serve(cfg *config.Config) error {
 		return fmt.Errorf("dns responder: %w", err)
 	}
 	defer stopDNS()
+	stopConsole, err := consoleapi.StartConsole(cfg, admin.NewClient(cfg.AdminPort).Alive)
+	if err != nil {
+		// The console is an convenience surface; a failure to start it
+		// (rare: bind conflict) must not take serving down.
+		log.Printf("aven: console API unavailable: %v", err)
+	} else {
+		defer stopConsole()
+		log.Printf("aven: console API on https://daemon.%s:%d (127.0.0.1)", cfg.Suffix, cfg.ConsolePort)
+	}
 	log.Printf("aven: serving %d domain(s) (*.%s) on ports %d/%d, admin API on 127.0.0.1:%d, resolving *.%s via 127.0.0.1:%d",
 		len(cfg.Domains), cfg.Suffix, cfg.HTTPPort, cfg.HTTPSPort, cfg.AdminPort, cfg.Suffix, cfg.DNSPort)
 
-	adminC := NewClient(cfg.AdminPort)
+	adminC := admin.NewClient(cfg.AdminPort)
 	ready := adminC.WaitForReady(10*time.Second) == nil
 	if ready {
 		log.Printf("aven: ready")
@@ -103,7 +114,7 @@ func StartInBackground(cfg *config.Config) error {
 	if err := cmd.Start(); err != nil {
 		return err
 	}
-	if err := NewClient(cfg.AdminPort).WaitForReady(10 * time.Second); err != nil {
+	if err := admin.NewClient(cfg.AdminPort).WaitForReady(10 * time.Second); err != nil {
 		return fmt.Errorf("daemon did not become ready (see %s): %w", caddyconf.LogPath(), err)
 	}
 	return nil

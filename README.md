@@ -76,6 +76,20 @@ Tools: `list_domains`, `add_domain`, `remove_domain`, `pause_domain`,
 `daemon_control`, `doctor`. Every CLI mutation is also available as a tool — agents
 can stand up `api.aven`, test against it, inspect the traffic, and tear it down again.
 
+## Console
+
+aven pairs with a browser console at [console.aven.sh](https://console.aven.sh):
+
+```bash
+aven console pair     # prints a deep link carrying a one-time pairing token
+aven console revoke   # revoke the token
+```
+
+The console is a static web app that talks **straight to your local daemon** over
+HTTPS (`daemon.aven:9443`, authenticated with your pairing token). No cloud control
+plane, no tunnel, no account — nothing leaves your machine. The daemon must be
+running (`aven serve`).
+
 ## How it works
 
 `aven serve` runs Caddy v2 embedded in-process: port 443 for HTTPS with wildcard

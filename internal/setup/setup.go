@@ -9,8 +9,8 @@ import (
 	"os"
 	"strings"
 
+	"aven/internal/admin"
 	"aven/internal/config"
-	"aven/internal/daemon"
 	"aven/internal/elevate"
 	"aven/internal/trust"
 )
@@ -40,7 +40,7 @@ func ResolverInstalled(cfg *config.Config) bool {
 func Run(cfg *config.Config) error {
 	root := trust.RootCertPath()
 	if _, err := os.Stat(root); err != nil {
-		if daemon.NewClient(cfg.AdminPort).Alive() {
+		if admin.NewClient(cfg.AdminPort).Alive() {
 			return fmt.Errorf("daemon is running but CA is missing at %s; restart the daemon", root)
 		}
 		if err := trust.ProvisionCA(); err != nil {

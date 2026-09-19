@@ -9,8 +9,8 @@ import (
 	"os"
 	"syscall"
 
+	"aven/internal/admin"
 	"aven/internal/config"
-	"aven/internal/daemon"
 	"aven/internal/domain"
 	"aven/internal/setup"
 	"aven/internal/trust"
@@ -43,7 +43,7 @@ func Run() Report {
 	if err != nil {
 		return Report{Checks: []Check{{Name: "config", Level: LevelFail, Detail: err.Error()}}}
 	}
-	adminC := daemon.NewClient(cfg.AdminPort)
+	adminC := admin.NewClient(cfg.AdminPort)
 	daemonUp := adminC.Alive()
 	rep := Report{DaemonUp: daemonUp}
 

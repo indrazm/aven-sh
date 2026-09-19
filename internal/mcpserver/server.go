@@ -10,6 +10,7 @@ import (
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
+	"aven/internal/admin"
 	"aven/internal/config"
 	"aven/internal/daemon"
 	"aven/internal/doctor"
@@ -101,7 +102,7 @@ func Run() error {
 			}
 			return textResult("daemon started"), nil, nil
 		case "stop":
-			if err := daemon.NewClient(cfg.AdminPort).Stop(); err != nil {
+			if err := admin.NewClient(cfg.AdminPort).Stop(); err != nil {
 				return nil, nil, err
 			}
 			return textResult("daemon stopped"), nil, nil

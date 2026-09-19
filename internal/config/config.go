@@ -33,14 +33,15 @@ type Domain struct {
 	Paused bool `yaml:"paused,omitempty"`
 }
 
-// Config is the full ~/\.aven/config.yaml document.
+// Config is the full ~/.aven/config.yaml document.
 type Config struct {
-	Suffix    string   `yaml:"suffix"`
-	HTTPPort  int      `yaml:"http_port"`
-	HTTPSPort int      `yaml:"https_port"`
-	AdminPort int      `yaml:"admin_port"`
-	DNSPort   int      `yaml:"dns_port"`
-	Domains   []Domain `yaml:"domains"`
+	Suffix      string   `yaml:"suffix"`
+	HTTPPort    int      `yaml:"http_port"`
+	HTTPSPort   int      `yaml:"https_port"`
+	AdminPort   int      `yaml:"admin_port"`
+	DNSPort     int      `yaml:"dns_port"`
+	ConsolePort int      `yaml:"console_port"`
+	Domains     []Domain `yaml:"domains"`
 }
 
 // Default returns the built-in configuration used when no file exists.
@@ -53,8 +54,9 @@ func Default() *Config {
 		// macOS returns EPERM for unprivileged binds of port 53, so the
 		// responder defaults to 5354; /etc/resolver/<suffix> includes a
 		// `port` directive pointing at it.
-		DNSPort: 5354,
-		Domains: []Domain{},
+		DNSPort:     5354,
+		ConsolePort: 9443,
+		Domains:     []Domain{},
 	}
 }
 
@@ -172,6 +174,14 @@ func (c *Config) Validate() error {
 		}
 	}
 	return nil
+}
+
+// Spec returns the domain's target or root, whichever is set.
+func (d Domain) Spec() string {
+	if d.Kind == KindProxy {
+		return d.Target
+	}
+	return d.Root
 }
 
 // FQDN returns the fully qualified domain name for a domain name label.

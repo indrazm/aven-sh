@@ -23,6 +23,11 @@ func RootCertPath() string {
 	return filepath.Join(config.BaseDir(), "caddy", "pki", "authorities", "local", "root.crt")
 }
 
+// RootKeyPath returns the on-disk path of the root CA private key.
+func RootKeyPath() string {
+	return filepath.Join(config.BaseDir(), "caddy", "pki", "authorities", "local", "root.key")
+}
+
 // StorageDir returns the Caddy storage root (~/\.aven/caddy).
 func StorageDir() string { return filepath.Join(config.BaseDir(), "caddy") }
 

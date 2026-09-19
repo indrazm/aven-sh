@@ -13,9 +13,9 @@ import (
 	"github.com/caddyserver/caddy/v2"
 	_ "github.com/caddyserver/caddy/v2/modules/standard"
 
+	"aven/internal/admin"
 	"aven/internal/caddyconf"
 	"aven/internal/config"
-	"aven/internal/daemon"
 	"aven/internal/elevate"
 )
 
@@ -32,7 +32,7 @@ func Ensure(cfg *config.Config) error {
 	}
 	root := RootCertPath()
 	if _, err := os.Stat(root); err != nil {
-		if daemon.NewClient(cfg.AdminPort).Alive() {
+		if admin.NewClient(cfg.AdminPort).Alive() {
 			return fmt.Errorf("daemon is running but CA is missing at %s; restart the daemon", root)
 		}
 		if err := ProvisionCA(); err != nil {

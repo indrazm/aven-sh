@@ -6,12 +6,14 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/caddyserver/caddy/v2"
 	"github.com/spf13/cobra"
 
 	"aven/internal/caddyconf"
 	"aven/internal/config"
+	"aven/internal/consoleapi"
 	"aven/internal/daemon"
 	"aven/internal/doctor"
 	"aven/internal/domain"
@@ -273,7 +275,53 @@ https://aven.sh`,
 		},
 	}
 
-	root.AddCommand(serve, setupCmd, trustCmd, add, remove, pause, resume, list, doctorCmd, validate, mcp)
+	console := &cobra.Command{
+		Use:   "console",
+		Short: "Pair the local daemon with the web console (console.aven.sh)",
+	}
+	consolePair := &cobra.Command{
+		Use:   "pair",
+		Short: "Generate a pairing token for console.aven.sh",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if !consoleapi.IsPaired() {
+				if _, err := consoleapi.NewToken(); err != nil {
+					return err
+				}
+			}
+			token, err := os.ReadFile(consoleapi.TokenPath())
+			if err != nil {
+				return err
+			}
+			t := strings.TrimSpace(string(token))
+			cfg, err := config.Load()
+			if err != nil {
+				return err
+			}
+			fmt.Printf("token:  %s\n", t)
+			fmt.Printf("open:   https://console.aven.sh/pair#T=%s\n", t)
+			fmt.Printf("local:  https://daemon.%s:%d (daemon must be running)\n", cfg.Suffix, cfg.ConsolePort)
+			return nil
+		},
+	}
+	consoleRevoke := &cobra.Command{
+		Use:   "revoke",
+		Short: "Revoke the console pairing token",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			removed, err := consoleapi.Revoke()
+			if err != nil {
+				return err
+			}
+			if removed {
+				fmt.Println("console pairing revoked")
+			} else {
+				fmt.Println("no console pairing found")
+			}
+			return nil
+		},
+	}
+	console.AddCommand(consolePair, consoleRevoke)
+
+	root.AddCommand(serve, setupCmd, trustCmd, add, remove, pause, resume, list, doctorCmd, validate, console, mcp)
 	if err := root.Execute(); err != nil {
 		os.Exit(1)
 	}

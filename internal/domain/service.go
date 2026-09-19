@@ -11,9 +11,9 @@ import (
 	"path/filepath"
 	"time"
 
+	"aven/internal/admin"
 	"aven/internal/caddyconf"
 	"aven/internal/config"
-	"aven/internal/daemon"
 )
 
 // Status is one row of `list`: config data plus live observations.
@@ -118,19 +118,19 @@ func List() (daemonUp bool, rows []Status, err error) {
 	if err != nil {
 		return false, nil, err
 	}
-	daemonUp = daemon.NewClient(cfg.AdminPort).Alive()
+	daemonUp = admin.NewClient(cfg.AdminPort).Alive()
 	for _, d := range cfg.Domains {
 		row := Status{
 			Name:   d.Name,
 			Kind:   d.Kind,
 			FQDN:   cfg.FQDN(d.Name),
 			Paused: d.Paused,
+			Spec:   d.Spec(),
 		}
 		switch {
 		case d.Paused:
 			row.BackendNote = "paused"
 		case d.Kind == config.KindProxy:
-			row.Spec = d.Target
 			dial, _, perr := caddyconf.ParseTarget(d.Target)
 			if perr != nil {
 				row.BackendNote = perr.Error()
@@ -144,7 +144,6 @@ func List() (daemonUp bool, rows []Status, err error) {
 			conn.Close()
 			row.BackendUp = true
 		case d.Kind == config.KindStatic:
-			row.Spec = d.Root
 			if _, serr := os.Stat(d.Root); serr != nil {
 				row.BackendNote = "root missing"
 				break
@@ -160,7 +159,7 @@ func List() (daemonUp bool, rows []Status, err error) {
 // POST /load. A stopped daemon is a no-op: the config is picked up at the
 // next start.
 func ReloadIfRunning(cfg *config.Config) error {
-	c := daemon.NewClient(cfg.AdminPort)
+	c := admin.NewClient(cfg.AdminPort)
 	if !c.Alive() {
 		return nil
 	}
