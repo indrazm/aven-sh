@@ -41,7 +41,11 @@ type Config struct {
 	AdminPort   int      `yaml:"admin_port"`
 	DNSPort     int      `yaml:"dns_port"`
 	ConsolePort int      `yaml:"console_port"`
-	Domains     []Domain `yaml:"domains"`
+	// Extra browser origins allowed to call the console API (the static
+	// console host is always allowed). Useful while console.aven.sh is not
+	// yet bound, e.g. a workers.dev preview URL.
+	ConsoleOrigins []string `yaml:"console_origins,omitempty"`
+	Domains        []Domain `yaml:"domains"`
 }
 
 // Default returns the built-in configuration used when no file exists.
@@ -54,9 +58,10 @@ func Default() *Config {
 		// macOS returns EPERM for unprivileged binds of port 53, so the
 		// responder defaults to 5354; /etc/resolver/<suffix> includes a
 		// `port` directive pointing at it.
-		DNSPort:     5354,
-		ConsolePort: 9443,
-		Domains:     []Domain{},
+		DNSPort:        5354,
+		ConsolePort:    9443,
+		ConsoleOrigins: []string{"https://console.aven.sh"},
+		Domains:        []Domain{},
 	}
 }
 

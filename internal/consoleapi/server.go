@@ -20,10 +20,8 @@ import (
 
 const Version = "0.1.0"
 
-// consoleOrigin is the only web origin allowed to call this API from a
 // browser. Local dev origins (localhost/127.0.0.1, any port) are also
 // accepted; every request still requires the bearer token.
-var consoleOrigin = "https://console.aven.sh"
 
 // StartConsole runs the console API listener on 127.0.0.1. It requires the
 // CA to be provisioned (for the leaf certificate); a missing CA is
@@ -242,19 +240,31 @@ type badRequestError struct{ error }
 
 func badRequest(err error) error { return badRequestError{err} }
 
+// originAllowed checks the static console origin, localhost dev origins,
+// and any extra origins configured in config.yaml (console_origins).
 func originAllowed(origin string) bool {
-	if origin == consoleOrigin {
+	if origin == "https://console.aven.sh" {
 		return true
 	}
-	return strings.HasPrefix(origin, "http://localhost:") ||
-		strings.HasPrefix(origin, "http://127.0.0.1:")
+	if strings.HasPrefix(origin, "http://localhost:") ||
+		strings.HasPrefix(origin, "http://127.0.0.1:") {
+		return true
+	}
+	if cfg, err := config.Load(); err == nil {
+		for _, o := range cfg.ConsoleOrigins {
+			if o != "" && o == origin {
+				return true
+			}
+		}
+	}
+	return false
 }
 
-// originIfAllowed echoes the origin for CORS (empty when absent). Callers
-// have already been through originAllowed.
+// originIfAllowed echoes the origin for CORS (falls back to the console
+// origin when absent). Callers have already been through originAllowed.
 func originIfAllowed(origin string) string {
 	if origin != "" && originAllowed(origin) {
 		return origin
 	}
-	return consoleOrigin
+	return "https://console.aven.sh"
 }
