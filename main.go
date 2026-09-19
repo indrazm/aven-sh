@@ -20,6 +20,7 @@ import (
 	"aven/mcpserver"
 	"aven/setup"
 	"aven/trust"
+	"aven/upgrade"
 )
 
 // version is stamped at release build time via -ldflags "-X main.version=…".
@@ -29,7 +30,7 @@ func main() {
 	root := &cobra.Command{
 		Use:     "aven",
 		Version: version,
-		Short: "Local HTTPS development domains on localhost",
+		Short:   "Local HTTPS development domains on localhost",
 		Long: `aven creates local development domains like myapp.aven that serve
 HTTPS from localhost via reverse proxy or static file serving.
 
@@ -288,6 +289,16 @@ https://aven.sh`,
 	}
 	resolver.AddCommand(resolverApply)
 
+	var upgradeCheck bool
+	upgrade := &cobra.Command{
+		Use:   "upgrade",
+		Short: "Upgrade aven to the latest release",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return upgrade.Run(version, upgradeCheck)
+		},
+	}
+	upgrade.Flags().BoolVar(&upgradeCheck, "check", false, "only check whether an update is available")
+
 	mcp := &cobra.Command{
 		Use:   "mcp",
 		Short: "Run the MCP server for AI agents (stdio)",
@@ -342,7 +353,7 @@ https://aven.sh`,
 	}
 	console.AddCommand(consolePair, consoleRevoke)
 
-	root.AddCommand(serve, setupCmd, trustCmd, add, remove, pause, resume, list, doctorCmd, validate, resolver, console, mcp)
+	root.AddCommand(serve, setupCmd, trustCmd, add, remove, pause, resume, list, doctorCmd, validate, resolver, console, upgrade, mcp)
 	if err := root.Execute(); err != nil {
 		os.Exit(1)
 	}
