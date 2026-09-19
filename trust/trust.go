@@ -1,19 +1,17 @@
 // Package trust provisions the aven root CA (via the embedded Caddy pki
-// app, without serving) and installs it into the macOS system trust store.
+// app, without serving) and installs it into the system trust store.
+// Platform specifics (trust-store location, verification command) live in
+// the _darwin / _linux files.
 package trust
 
 import (
 	"encoding/json"
 	"fmt"
 	"os"
-	"os/exec"
-	"runtime"
-	"syscall"
 
 	"github.com/caddyserver/caddy/v2"
 	_ "github.com/caddyserver/caddy/v2/modules/standard"
 
-	"aven/admin"
 	"aven/caddyconf"
 	"aven/config"
 	"aven/elevate"
@@ -26,15 +24,8 @@ func RootCertPath() string { return caddyconf.RootCertPath() }
 // existing CA is reused (the pki app never regenerates), and an already
 // trusted root short-circuits.
 func Ensure(cfg *config.Config) error {
-	if runtime.GOOS != "darwin" {
-		fmt.Printf("unsupported platform %s: install %s into the system trust store manually\n", runtime.GOOS, RootCertPath())
-		return nil
-	}
 	root := RootCertPath()
 	if _, err := os.Stat(root); err != nil {
-		if admin.NewClient(cfg.AdminPort).Alive() {
-			return fmt.Errorf("daemon is running but CA is missing at %s; restart the daemon", root)
-		}
 		if err := ProvisionCA(); err != nil {
 			return err
 		}
@@ -44,44 +35,20 @@ func Ensure(cfg *config.Config) error {
 		fmt.Printf("CA already trusted: %s\n", root)
 		return nil
 	}
-	if err := elevate.Run(TrustCommand(root), "aven needs to trust its local root CA"); err != nil {
+	cmd, err := InstallCmd(root)
+	if err != nil {
+		return err
+	}
+	if err := elevate.Run(cmd, "aven needs to trust its local root CA"); err != nil {
 		return err
 	}
 	fmt.Printf("trusted root CA: %s\n", root)
 	return nil
 }
 
-// TrustCommand builds the elevated shell command that installs root into
-// the system trust store. When invoked from a background session (SSH,
-// daemon), SecTrustSettingsSetTrustSettings cannot reach SecurityAgent, so
-// the command is attached to the console user's GUI session first.
-func TrustCommand(root string) string {
-	cmd := fmt.Sprintf("security add-trusted-cert -d -r trustRoot -k /Library/Keychains/System.keychain %s",
-		elevate.ShellQuote(root))
-	if uid := consoleUID(); uid > 0 {
-		cmd = fmt.Sprintf("launchctl asuser %d %s", uid, cmd)
-	}
-	return cmd
-}
-
-// consoleUID returns the uid logged in on the GUI console, or 0.
-func consoleUID() int {
-	st, err := os.Stat("/dev/console")
-	if err != nil {
-		return 0
-	}
-	if s, ok := st.Sys().(*syscall.Stat_t); ok && s.Uid > 0 {
-		return int(s.Uid)
-	}
-	return 0
-}
-
-// Trusted reports whether the root certificate exists and verifies against
-// the system trust store.
+// Trusted reports whether the root certificate exists and is trusted by
+// the system.
 func Trusted() bool {
-	if runtime.GOOS != "darwin" {
-		return false
-	}
 	if _, err := os.Stat(RootCertPath()); err != nil {
 		return false
 	}
@@ -89,9 +56,8 @@ func Trusted() bool {
 }
 
 // ProvisionCA runs a minimal pki-only Caddy config so the CA materializes
-// in storage without binding 80/443. Admin is disabled so a stale daemon on
-// 2019 cannot block provisioning. Exposed for `setup`, which composes it
-// into a single elevation command.
+// in storage without binding ports. Admin is disabled so a stale daemon on
+// 2019 cannot block provisioning.
 func ProvisionCA() error {
 	doc := map[string]any{
 		"admin":   map[string]any{"disabled": true},
@@ -114,10 +80,4 @@ func ProvisionCA() error {
 		return fmt.Errorf("CA provisioning failed: %w", err)
 	}
 	return caddy.Stop()
-}
-
-// trusted shells out to `security verify-cert`; exit 0 means the root
-// chains to a trust-store anchor.
-func trusted() bool {
-	return exec.Command("security", "verify-cert", "-c", RootCertPath()).Run() == nil
 }

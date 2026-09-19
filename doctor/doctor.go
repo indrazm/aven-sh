@@ -71,7 +71,7 @@ func Run() Report {
 	}
 
 	if setup.ResolverInstalled(cfg) {
-		rep.add("resolver", LevelOK, setup.ResolverPath(cfg)+" → 127.0.0.1")
+		rep.add("resolver", LevelOK, setup.ResolverDetail(cfg))
 	} else {
 		rep.add("resolver", LevelFail, fmt.Sprintf("missing; *.%s will not resolve; run `aven setup`", cfg.Suffix))
 	}

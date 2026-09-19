@@ -3,12 +3,15 @@
 package daemon
 
 import (
+	"errors"
 	"fmt"
 	"log"
+	"net"
 	"os"
 	"os/exec"
 	"os/signal"
 	"path/filepath"
+	"runtime"
 	"syscall"
 	"time"
 
@@ -25,6 +28,32 @@ import (
 // and blocks until SIGINT/SIGTERM or until the engine is stopped through
 // the admin API (POST /stop), which also terminates this process.
 func Serve(cfg *config.Config) error {
+	// Pre-check the public ports so a busy or unbindable port produces a
+	// targeted error instead of Caddy's generic failure.
+	for _, p := range []struct {
+		name string
+		port int
+	}{
+		{"http", cfg.HTTPPort},
+		{"https", cfg.HTTPSPort},
+	} {
+		ln, err := net.Listen("tcp", fmt.Sprintf(":%d", p.port))
+		if err != nil {
+			msg := fmt.Sprintf("bind port %d (%s): %v", p.port, p.name, err)
+			if errors.Is(err, syscall.EACCES) || errors.Is(err, syscall.EPERM) {
+				if runtime.GOOS == "linux" {
+					self, _ := os.Executable()
+					msg += fmt.Sprintf(
+						"\n  privileged ports need a capability; run:\n"+
+							"    sudo setcap 'cap_net_bind_service=+ep' %s\n"+
+							"  or change http_port/https_port in %s", self, config.Path())
+				}
+			}
+			return errors.New(msg)
+		}
+		ln.Close()
+	}
+
 	b, err := caddyconf.Build(cfg)
 	if err != nil {
 		return err

@@ -131,9 +131,25 @@ Proxy targets accept `host:port`, `http://`, or `https://` (TLS upstreams suppor
 
 ## Requirements
 
-- macOS (Apple Silicon and Intel; aven relies on macOS scoped resolvers and
-  unprivileged low-port binds)
+- **macOS** (10.14+, Apple Silicon or Intel) or **Linux** (systemd-resolved for
+  zero-prompt DNS routing — Ubuntu, Debian, Fedora, Arch, ...)
 - Go 1.27+ to build
+
+### Platform notes
+
+**macOS** — `aven setup` writes a scoped resolver file (`/etc/resolver/<suffix>`)
+through a single password dialog; ports 80/443 bind without privileges.
+
+**Linux** — `aven setup` uses `sudo` (passwordless or a fresh sudo timestamp; run
+`sudo aven setup` otherwise) and routes `*.aven` through systemd-resolved
+(`resolvectl dns/domain` on your default link). A `aven-resolver.service` oneshot
+unit re-applies the routing at boot. Two things to know:
+
+- Ports 80/443 require a capability — once per binary:
+  `sudo setcap 'cap_net_bind_service=+ep' aven`
+- The root CA goes into the system store (`update-ca-certificates` /
+  `update-ca-trust`), which covers curl and Chromium; Firefox keeps its own store —
+  import the root manually if you browse with it.
 
 ## License
 

@@ -267,6 +267,23 @@ https://aven.sh`,
 		},
 	}
 
+	resolver := &cobra.Command{
+		Use:   "resolver",
+		Short: "Scoped DNS routing for aven domains",
+	}
+	resolverApply := &cobra.Command{
+		Use:   "apply",
+		Short: "Re-apply scoped DNS routing (Linux; run as root, e.g. from the boot unit)",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			cfg, err := config.Load()
+			if err != nil {
+				return err
+			}
+			return setup.ApplyResolver(cfg)
+		},
+	}
+	resolver.AddCommand(resolverApply)
+
 	mcp := &cobra.Command{
 		Use:   "mcp",
 		Short: "Run the MCP server for AI agents (stdio)",
@@ -321,7 +338,7 @@ https://aven.sh`,
 	}
 	console.AddCommand(consolePair, consoleRevoke)
 
-	root.AddCommand(serve, setupCmd, trustCmd, add, remove, pause, resume, list, doctorCmd, validate, console, mcp)
+	root.AddCommand(serve, setupCmd, trustCmd, add, remove, pause, resume, list, doctorCmd, validate, resolver, console, mcp)
 	if err := root.Execute(); err != nil {
 		os.Exit(1)
 	}
