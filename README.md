@@ -31,7 +31,7 @@ browsers trust, served straight from your machine.
 ## Quick start
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/indrazm/aven-sh/main/install.sh | sh
+curl -fsSL https://install.aven.sh/install.sh | sh
 
 aven setup              # once: trust the CA + install the DNS resolver (1 password dialog)
 aven serve              # start the HTTPS daemon (ports 80/443)
