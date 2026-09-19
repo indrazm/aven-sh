@@ -1,0 +1,5 @@
+# build output
+/aven
+
+# editors
+.DS_Store
