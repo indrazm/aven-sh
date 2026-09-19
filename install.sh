@@ -54,7 +54,7 @@ say "downloading ${NAME} ${version} (${target})…"
 curl -fsSL "$base_url/$asset" -o "$tmp/$asset"
 curl -fsSL "$base_url/checksums.txt" -o "$tmp/checksums.txt"
 
-expected=$(grep " $asset\$" "$tmp/checksums.txt" | cut -d' ' -f1)
+expected=$(grep -E "[[:space:]](${asset}|.*/${asset})\$" "$tmp/checksums.txt" | head -1 | cut -d' ' -f1)
 if [ -z "$expected" ]; then
   err "checksum for $asset not found in checksums.txt"
 fi

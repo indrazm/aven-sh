@@ -27,7 +27,7 @@ jobs:
               -o "dist/aven-$target" .
             tar -czf "dist/aven-$target.tar.gz" -C dist "aven-$target"
           done
-          shasum -a 256 dist/*.tar.gz > dist/checksums.txt
+          (cd dist && shasum -a 256 *.tar.gz > checksums.txt)
 
       - name: Create release
         env:
