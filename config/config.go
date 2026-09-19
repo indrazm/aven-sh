@@ -119,6 +119,8 @@ func (c *Config) Save() error {
 	if err != nil {
 		return err
 	}
+	// CreateTemp yields 0600 and the file must stay owner-only (it holds
+	// domain names and filesystem paths); the regression test pins this.
 	tmp, err := os.CreateTemp(BaseDir(), ".config-*.yaml")
 	if err != nil {
 		return err
@@ -130,9 +132,6 @@ func (c *Config) Save() error {
 		return err
 	}
 	if err := tmp.Close(); err != nil {
-		return err
-	}
-	if err := os.Chmod(tmpName, 0o644); err != nil {
 		return err
 	}
 	return os.Rename(tmpName, Path())
