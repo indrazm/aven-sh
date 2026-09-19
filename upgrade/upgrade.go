@@ -234,6 +234,10 @@ func replace(staged, exe string) error {
 		"aven needs to replace its binary")
 }
 
+// maxDownload bounds each upgrade download (far above any release asset)
+// so a hostile or broken server cannot exhaust disk/memory.
+const maxDownload = 512 << 20
+
 // download fetches url into dest.
 func download(url, dest string) error {
 	resp, err := http.Get(url)
@@ -248,11 +252,18 @@ func download(url, dest string) error {
 	if err != nil {
 		return err
 	}
-	if _, err := io.Copy(out, resp.Body); err != nil {
+	n, err := io.Copy(out, io.LimitReader(resp.Body, maxDownload+1))
+	if err != nil {
 		out.Close()
 		return err
 	}
-	return out.Close()
+	if err := out.Close(); err != nil {
+		return err
+	}
+	if n > maxDownload {
+		return fmt.Errorf("download of %s exceeds %d bytes", url, maxDownload)
+	}
+	return nil
 }
 
 func normalize(v string) string { return strings.TrimPrefix(v, "v") }

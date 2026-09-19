@@ -4,9 +4,7 @@ package requests
 
 import (
 	"encoding/json"
-	"fmt"
 	"os"
-	"os/exec"
 	"time"
 )
 
@@ -88,11 +86,6 @@ func Tail(path, host string, max, maxBytes int64) ([]Request, error) {
 	return out, nil
 }
 
-func runCurl(args ...string) (string, error) {
-	out, err := exec.Command("curl", args...).CombinedOutput()
-	return string(out), err
-}
-
 func splitLines(b []byte) [][]byte {
 	var lines [][]byte
 	start := 0
@@ -108,19 +101,4 @@ func splitLines(b []byte) [][]byte {
 		lines = append(lines, b[start:]) // trailing partial line
 	}
 	return lines
-}
-
-// Replay re-sends a request to the local daemon and returns the response
-// status code.
-func Replay(r Request) (int, error) {
-	out, err := runCurl("-s", "-o", "/dev/null", "-w", "%{http_code}",
-		"-X", r.Method, "https://"+r.Host+r.URI)
-	if err != nil {
-		return 0, err
-	}
-	var code int
-	if _, err := fmt.Sscanf(out, "%d", &code); err != nil {
-		return 0, fmt.Errorf("unexpected curl output %q", out)
-	}
-	return code, nil
 }
