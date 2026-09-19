@@ -9,7 +9,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"aven/internal/config"
+	"aven/config"
 )
 
 // TokenPath returns the stored console pairing token (~/.aven/console-token).

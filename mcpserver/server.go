@@ -10,11 +10,11 @@ import (
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
-	"aven/internal/admin"
-	"aven/internal/config"
-	"aven/internal/daemon"
-	"aven/internal/doctor"
-	"aven/internal/domain"
+	"aven/admin"
+	"aven/config"
+	"aven/daemon"
+	"aven/doctor"
+	"aven/domain"
 )
 
 const version = "1.0.0"

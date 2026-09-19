@@ -9,10 +9,10 @@ import (
 	"os"
 	"strings"
 
-	"aven/internal/admin"
-	"aven/internal/config"
-	"aven/internal/elevate"
-	"aven/internal/trust"
+	"aven/admin"
+	"aven/config"
+	"aven/elevate"
+	"aven/trust"
 )
 
 // ResolverPath returns the macOS scoped-resolver file for the suffix

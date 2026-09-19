@@ -11,9 +11,9 @@ import (
 	"path/filepath"
 	"time"
 
-	"aven/internal/admin"
-	"aven/internal/caddyconf"
-	"aven/internal/config"
+	"aven/admin"
+	"aven/caddyconf"
+	"aven/config"
 )
 
 // Status is one row of `list`: config data plus live observations.

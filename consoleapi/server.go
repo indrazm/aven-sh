@@ -11,11 +11,11 @@ import (
 	"strings"
 	"time"
 
-	"aven/internal/caddyconf"
-	"aven/internal/config"
-	"aven/internal/doctor"
-	"aven/internal/domain"
-	"aven/internal/requests"
+	"aven/caddyconf"
+	"aven/config"
+	"aven/doctor"
+	"aven/domain"
+	"aven/requests"
 )
 
 const Version = "0.1.0"

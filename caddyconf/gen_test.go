@@ -6,7 +6,7 @@ import (
 	"reflect"
 	"testing"
 
-	"aven/internal/config"
+	"aven/config"
 )
 
 // goldenConfig is a two-domain config: one HTTP proxy, one static site.

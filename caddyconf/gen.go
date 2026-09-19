@@ -10,7 +10,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"aven/internal/config"
+	"aven/config"
 )
 
 // CAName is the pki CA name; it becomes the certificate issuer name so the

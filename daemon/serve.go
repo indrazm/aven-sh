@@ -15,10 +15,10 @@ import (
 	"github.com/caddyserver/caddy/v2"
 	_ "github.com/caddyserver/caddy/v2/modules/standard" // register standard Caddy modules
 
-	"aven/internal/admin"
-	"aven/internal/caddyconf"
-	"aven/internal/config"
-	"aven/internal/consoleapi"
+	"aven/admin"
+	"aven/caddyconf"
+	"aven/config"
+	"aven/consoleapi"
 )
 
 // Serve builds the Caddy config, validates it, runs the engine in-process

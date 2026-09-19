@@ -7,7 +7,7 @@ import (
 
 	"github.com/miekg/dns"
 
-	"aven/internal/config"
+	"aven/config"
 )
 
 // StartDNS runs a minimal authoritative-style responder on 127.0.0.1 that

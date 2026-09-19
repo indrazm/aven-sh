@@ -9,11 +9,11 @@ import (
 	"os"
 	"syscall"
 
-	"aven/internal/admin"
-	"aven/internal/config"
-	"aven/internal/domain"
-	"aven/internal/setup"
-	"aven/internal/trust"
+	"aven/admin"
+	"aven/config"
+	"aven/domain"
+	"aven/setup"
+	"aven/trust"
 )
 
 type Level string

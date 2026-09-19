@@ -35,12 +35,12 @@ type Domain struct {
 
 // Config is the full ~/.aven/config.yaml document.
 type Config struct {
-	Suffix      string   `yaml:"suffix"`
-	HTTPPort    int      `yaml:"http_port"`
-	HTTPSPort   int      `yaml:"https_port"`
-	AdminPort   int      `yaml:"admin_port"`
-	DNSPort     int      `yaml:"dns_port"`
-	ConsolePort int      `yaml:"console_port"`
+	Suffix      string `yaml:"suffix"`
+	HTTPPort    int    `yaml:"http_port"`
+	HTTPSPort   int    `yaml:"https_port"`
+	AdminPort   int    `yaml:"admin_port"`
+	DNSPort     int    `yaml:"dns_port"`
+	ConsolePort int    `yaml:"console_port"`
 	// Extra browser origins allowed to call the console API (the static
 	// console host is always allowed). Useful while console.aven.sh is not
 	// yet bound, e.g. a workers.dev preview URL.

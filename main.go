@@ -11,15 +11,15 @@ import (
 	"github.com/caddyserver/caddy/v2"
 	"github.com/spf13/cobra"
 
-	"aven/internal/caddyconf"
-	"aven/internal/config"
-	"aven/internal/consoleapi"
-	"aven/internal/daemon"
-	"aven/internal/doctor"
-	"aven/internal/domain"
-	"aven/internal/mcpserver"
-	"aven/internal/setup"
-	"aven/internal/trust"
+	"aven/caddyconf"
+	"aven/config"
+	"aven/consoleapi"
+	"aven/daemon"
+	"aven/doctor"
+	"aven/domain"
+	"aven/mcpserver"
+	"aven/setup"
+	"aven/trust"
 )
 
 func main() {
