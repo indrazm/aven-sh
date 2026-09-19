@@ -153,4 +153,4 @@ unit re-applies the routing at boot. Two things to know:
 
 ## License
 
-All rights reserved.
+MIT — see [LICENSE](LICENSE).
